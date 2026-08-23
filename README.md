@@ -18,17 +18,19 @@ codex plugin add codex-cli-notifier@cli-reminder-local
 
 ## 在其他电脑使用
 
-把整个仓库复制或通过 Git 克隆到目标电脑，然后在目标电脑运行：
+克隆公开仓库，然后注册本地 marketplace：
 
 ```bash
-codex plugin marketplace add /absolute/path/to/cli_remainder_plugin
+git clone https://github.com/mature-chives/cli_remainder_plugin.git
+cd cli_remainder_plugin
+codex plugin marketplace add .
 codex plugin add codex-cli-notifier@cli-reminder-local
 ```
 
-如果以后推送到 GitHub，也可以直接添加仓库：
+如果不需要修改源码，也可以不 clone，直接从 GitHub 添加：
 
 ```bash
-codex plugin marketplace add owner/repository
+codex plugin marketplace add mature-chives/cli_remainder_plugin
 codex plugin add codex-cli-notifier@cli-reminder-local
 ```
 
