@@ -1,0 +1,20 @@
+{
+  "name": "cli-reminder-local",
+  "interface": {
+    "displayName": "Cli Reminder Local"
+  },
+  "plugins": [
+    {
+      "name": "codex-cli-notifier",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-cli-notifier"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

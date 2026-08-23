@@ -1,0 +1,31 @@
+{
+  "description": "Notify the desktop when Codex needs attention.",
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_notify.py\"",
+            "commandWindows": "py -3 -c \"import os,runpy;runpy.run_path(os.path.join(os.environ['PLUGIN_ROOT'],'scripts','codex_notify.py'),run_name='__main__')\"",
+            "timeout": 8,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_notify.py\"",
+            "commandWindows": "py -3 -c \"import os,runpy;runpy.run_path(os.path.join(os.environ['PLUGIN_ROOT'],'scripts','codex_notify.py'),run_name='__main__')\"",
+            "timeout": 8,
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

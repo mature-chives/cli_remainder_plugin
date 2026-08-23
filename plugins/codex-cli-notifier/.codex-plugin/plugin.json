@@ -1,0 +1,21 @@
+{
+  "name": "codex-cli-notifier",
+  "version": "0.2.0+codex.20260823160338",
+  "description": "Cross-platform desktop notifications when Codex needs approval or finishes a turn.",
+  "author": {
+    "name": "Local developer"
+  },
+  "interface": {
+    "displayName": "Codex CLI Notifier",
+    "shortDescription": "Desktop alerts for approvals and completed turns.",
+    "longDescription": "Codex CLI Notifier sends native notifications with sound on macOS, Windows, and Linux when Codex needs permission or completes a turn.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Lifecycle hooks",
+      "Cross-platform desktop notifications",
+      "Sound alerts"
+    ],
+    "defaultPrompt": "Explain how Codex CLI Notifier is configured."
+  }
+}
