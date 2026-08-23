@@ -1,0 +1,53 @@
+{
+  "description": "Notify the desktop when Claude Code or Grok Build needs attention.",
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "-e",
+              "const r=process.env.GROK_PLUGIN_ROOT||process.env.CLAUDE_PLUGIN_ROOT;require(require('path').join(r,'scripts','cli_notify.js')).main()"
+            ],
+            "timeout": 8,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "-e",
+              "const r=process.env.GROK_PLUGIN_ROOT||process.env.CLAUDE_PLUGIN_ROOT;require(require('path').join(r,'scripts','cli_notify.js')).main()"
+            ],
+            "timeout": 8,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "-e",
+              "const r=process.env.GROK_PLUGIN_ROOT||process.env.CLAUDE_PLUGIN_ROOT;require(require('path').join(r,'scripts','cli_notify.js')).main()"
+            ],
+            "timeout": 8,
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

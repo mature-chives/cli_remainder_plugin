@@ -1,0 +1,14 @@
+{
+  "name": "cli-reminder-marketplace",
+  "owner": {
+    "name": "mature-chives"
+  },
+  "description": "Cross-platform desktop notifications for Codex CLI, Claude Code, and Grok Build.",
+  "plugins": [
+    {
+      "name": "cli-reminder",
+      "source": "./plugins/codex-cli-notifier",
+      "description": "Desktop alerts with sound for Claude Code and Grok Build approvals and completed turns."
+    }
+  ]
+}

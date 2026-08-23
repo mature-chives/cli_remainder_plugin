@@ -1,0 +1,14 @@
+{
+  "name": "cli-reminder",
+  "displayName": "CLI Reminder",
+  "version": "0.3.1",
+  "description": "Cross-platform desktop notifications with sound for Claude Code and Grok Build approvals and completed turns.",
+  "author": {
+    "name": "mature-chives",
+    "url": "https://github.com/mature-chives"
+  },
+  "homepage": "https://github.com/mature-chives/cli_remainder_plugin",
+  "repository": "https://github.com/mature-chives/cli_remainder_plugin",
+  "keywords": ["notifications", "hooks", "claude-code", "grok-build", "cross-platform"],
+  "hooks": "./hooks/claude-hooks.json"
+}

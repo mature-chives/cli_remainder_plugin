@@ -6,8 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_notify.py\"",
-            "commandWindows": "py -3 -c \"import os,runpy;runpy.run_path(os.path.join(os.environ['PLUGIN_ROOT'],'scripts','codex_notify.py'),run_name='__main__')\"",
+            "command": "node -e \"const r=process.env.PLUGIN_ROOT;require(require('path').join(r,'scripts','cli_notify.js')).main()\"",
             "timeout": 8,
             "async": true
           }
@@ -19,8 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/scripts/codex_notify.py\"",
-            "commandWindows": "py -3 -c \"import os,runpy;runpy.run_path(os.path.join(os.environ['PLUGIN_ROOT'],'scripts','codex_notify.py'),run_name='__main__')\"",
+            "command": "node -e \"const r=process.env.PLUGIN_ROOT;require(require('path').join(r,'scripts','cli_notify.js')).main()\"",
             "timeout": 8,
             "async": true
           }
