@@ -7,6 +7,7 @@
 - 等待权限确认。
 - 当前 turn 或后台 agent 完成。
 - Hook 异步执行；通知失败不会批准、拒绝或阻塞 CLI。
+- Codex 使用 **Approve for me** 自动审批时，不提醒每条权限请求。
 
 插件源码位于 [`plugins/codex-cli-notifier`](./plugins/codex-cli-notifier)。为兼容已有 Codex 安装，Codex 插件 ID 继续使用 `codex-cli-notifier`；Claude Code 和 Grok Build 中显示为 `cli-reminder`。
 

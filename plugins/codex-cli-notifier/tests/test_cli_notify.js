@@ -88,6 +88,65 @@ test("sound uses generic setting and keeps legacy Codex setting", () => {
   assert.equal(notifier.configuredSound({ CLI_REMINDER_SOUND: "none" }), null);
 });
 
+test("Codex approve for me suppresses permission notifications", () => {
+  const codexHome = fs.mkdtempSync(path.join(os.tmpdir(), "cli-reminder-codex-"));
+  fs.writeFileSync(
+    path.join(codexHome, "config.toml"),
+    'approvals_reviewer = "auto_review"\n\n[projects."/workspace"]\ntrust_level = "trusted"\n',
+  );
+  const env = {
+    CLAUDE_PLUGIN_ROOT: pluginRoot,
+    CODEX_HOME: codexHome,
+    PLUGIN_ROOT: pluginRoot,
+  };
+  const payload = {
+    hook_event_name: "PermissionRequest",
+    permission_mode: "default",
+    session_id: "auto-review-session",
+    tool_name: "Bash",
+  };
+  const notification = notifier.notificationFor(payload, env);
+  assert.equal(notifier.productName(payload, env), "Codex");
+  assert.equal(notifier.codexApprovalsReviewer(payload, env), "auto_review");
+  assert.equal(notifier.shouldDispatch(notification, payload, env), false);
+});
+
+test("manual Codex approval and non-Codex hooks still notify", () => {
+  const codexHome = fs.mkdtempSync(path.join(os.tmpdir(), "cli-reminder-codex-"));
+  fs.writeFileSync(path.join(codexHome, "config.toml"), 'approvals_reviewer = "user"\n');
+  const payload = {
+    hook_event_name: "PermissionRequest",
+    permission_mode: "default",
+    session_id: "manual-review-session",
+    tool_name: "Bash",
+  };
+  const codexEnv = { CODEX_HOME: codexHome, PLUGIN_ROOT: pluginRoot };
+  const claudeEnv = { CLAUDE_PLUGIN_ROOT: pluginRoot, CODEX_HOME: codexHome };
+  assert.equal(
+    notifier.shouldDispatch(notifier.notificationFor(payload, codexEnv), payload, codexEnv),
+    true,
+  );
+  assert.equal(
+    notifier.shouldDispatch(notifier.notificationFor(payload, claudeEnv), payload, claudeEnv),
+    true,
+  );
+});
+
+test("auto approval notification can be explicitly restored", () => {
+  const payload = {
+    hook_event_name: "PermissionRequest",
+    approvals_reviewer: "auto_review",
+    session_id: "forced-auto-review-session",
+    tool_name: "Bash",
+  };
+  const env = {
+    CLI_REMINDER_NOTIFY_AUTO_APPROVALS: "1",
+    PLUGIN_ROOT: pluginRoot,
+  };
+  const notification = notifier.notificationFor(payload, env);
+  assert.equal(notifier.shouldDispatch(notification, payload, env), true);
+});
+
 test("macOS notification and requested sound are dispatched", () => {
   const calls = [];
   const result = notifier.notifyMacos("title", "body", "Ping", {

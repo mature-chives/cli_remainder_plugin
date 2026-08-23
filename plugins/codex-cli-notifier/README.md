@@ -16,6 +16,14 @@
 
 Claude Code 可能在 `PermissionRequest` 后约六秒再次发出 `permission_prompt`。插件会按 session 去重，同一次权限请求只提醒一次。Grok Build 使用 camelCase Hook 输入，插件会自动转换。
 
+Codex 设置 `approvals_reviewer = "auto_review"`（界面中的 **Approve for me**）时，插件默认不发送 `PermissionRequest` 通知，避免自动审批的每条命令都响；`Stop` 任务完成通知不受影响。若希望自动审批时仍提醒：
+
+```bash
+export CLI_REMINDER_NOTIFY_AUTO_APPROVALS=1
+```
+
+这个过滤只作用于 Codex，不改变 Claude Code 和 Grok Build 的通知行为。
+
 ## 跨平台实现
 
 通知核心是无第三方 npm 依赖的 Node.js 脚本，通过 CLI 提供的插件根目录变量定位自身，不依赖固定安装路径：
@@ -68,7 +76,7 @@ node scripts/cli_notify.js --self-test --product "CLI Reminder"
 验证三套插件格式：
 
 ```bash
-claude plugin validate --strict .
+claude plugin validate .
 grok plugin validate .
 ```
 

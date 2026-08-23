@@ -1,7 +1,6 @@
 {
   "name": "cli-reminder",
-  "displayName": "CLI Reminder",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "description": "Cross-platform desktop notifications with sound for Claude Code and Grok Build approvals and completed turns.",
   "author": {
     "name": "mature-chives",

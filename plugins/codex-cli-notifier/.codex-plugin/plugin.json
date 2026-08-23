@@ -1,6 +1,6 @@
 {
   "name": "codex-cli-notifier",
-  "version": "0.3.1+codex.20260823165414",
+  "version": "0.3.3+codex.20260823170453",
   "description": "Cross-platform desktop notifications when Codex, Claude Code, or Grok Build needs approval or finishes a turn.",
   "author": {
     "name": "mature-chives"

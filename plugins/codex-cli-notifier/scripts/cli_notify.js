@@ -14,6 +14,7 @@ const MACOS_SOUND_DIRECTORY = "/System/Library/Sounds";
 const LINUX_FREEDESKTOP_SOUND =
   "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga";
 const PERMISSION_DEDUPE_WINDOW_MS = 30_000;
+const ENABLED_VALUES = new Set(["1", "true", "yes", "on"]);
 
 function compactText(value, limit = MAX_BODY_LENGTH) {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
@@ -43,8 +44,8 @@ function productName(payload = {}, env = process.env) {
   if (env.GROK_PLUGIN_ROOT || env.GROK_HOOK_EVENT || payload.hookEventName) {
     return "Grok Build";
   }
-  if (env.CLAUDE_PLUGIN_ROOT) return "Claude Code";
   if (env.PLUGIN_ROOT) return "Codex";
+  if (env.CLAUDE_PLUGIN_ROOT) return "Claude Code";
   return "CLI Reminder";
 }
 
@@ -176,6 +177,13 @@ function hadRecentImmediatePermission(
 
 function shouldDispatch(notification, payload, env = process.env, now = Date.now()) {
   if (!notification || notification.kind !== "permission") return Boolean(notification);
+  if (
+    notification.sourceEvent === "PermissionRequest" &&
+    codexAutoApprovalEnabled(payload, env) &&
+    !notifyAutoApprovals(env)
+  ) {
+    return false;
+  }
   if (notification.sourceEvent === "PermissionRequest") {
     markImmediatePermission(payload, env, now);
     return true;
@@ -193,6 +201,44 @@ function configuredSound(env = process.env) {
   const value = String(raw ?? DEFAULT_SOUND_NAME).trim();
   if (DISABLED_SOUND_VALUES.has(value.toLowerCase())) return null;
   return value || DEFAULT_SOUND_NAME;
+}
+
+function topLevelTomlString(source, key) {
+  for (const line of String(source || "").split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    if (trimmed.startsWith("[")) break;
+    const match = new RegExp(`^${key}\\s*=\\s*["']([^"']+)["']`).exec(trimmed);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function codexApprovalsReviewer(payload, env = process.env) {
+  const payloadValue = field(payload, "approvals_reviewer", "approvalsReviewer");
+  if (payloadValue) return String(payloadValue);
+
+  const codexHome =
+    env.CODEX_HOME || path.join(env.HOME || env.USERPROFILE || os.homedir(), ".codex");
+  try {
+    const source = fs.readFileSync(path.join(codexHome, "config.toml"), "utf8");
+    return topLevelTomlString(source, "approvals_reviewer");
+  } catch {
+    return null;
+  }
+}
+
+function codexAutoApprovalEnabled(payload, env = process.env) {
+  if (productName(payload, env) !== "Codex") return false;
+  const permissionMode = field(payload, "permission_mode", "permissionMode");
+  if (permissionMode === "bypassPermissions") return true;
+  return codexApprovalsReviewer(payload, env) === "auto_review";
+}
+
+function notifyAutoApprovals(env = process.env) {
+  return ENABLED_VALUES.has(
+    String(env.CLI_REMINDER_NOTIFY_AUTO_APPROVALS || "").trim().toLowerCase(),
+  );
 }
 
 function runQuietly(command, args, options = {}) {
@@ -360,6 +406,8 @@ function main(argv = process.argv.slice(2), input, env = process.env) {
 module.exports = {
   DEFAULT_SOUND_NAME,
   compactText,
+  codexApprovalsReviewer,
+  codexAutoApprovalEnabled,
   configuredSound,
   dedupeFile,
   findExecutable,
@@ -371,11 +419,13 @@ module.exports = {
   notificationType,
   notifyLinux,
   notifyMacos,
+  notifyAutoApprovals,
   notifyWindows,
   productName,
   projectName,
   sendNotification,
   shouldDispatch,
+  topLevelTomlString,
 };
 
 if (require.main === module) {
