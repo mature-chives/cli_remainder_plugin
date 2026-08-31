@@ -1,6 +1,6 @@
 {
   "name": "cli-reminder",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Configurable cross-platform sounds for Claude Code and Grok Build approvals and completed turns.",
   "author": {
     "name": "mature-chives",
