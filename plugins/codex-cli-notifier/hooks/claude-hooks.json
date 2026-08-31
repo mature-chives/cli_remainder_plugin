@@ -1,5 +1,5 @@
 {
-  "description": "Notify the desktop when Claude Code or Grok Build needs attention.",
+  "description": "Play configurable sounds when Claude Code or Grok Build needs approval or completes work.",
   "hooks": {
     "PermissionRequest": [
       {

@@ -9,10 +9,11 @@ const path = require("node:path");
 
 const MAX_BODY_LENGTH = 240;
 const DEFAULT_SOUND_NAME = "Glass";
+const DEFAULT_PERMISSION_SOUND_NAME = DEFAULT_SOUND_NAME;
+const DEFAULT_COMPLETION_SOUND_NAME = DEFAULT_SOUND_NAME;
 const DISABLED_SOUND_VALUES = new Set(["0", "false", "none", "off", "silent"]);
 const MACOS_SOUND_DIRECTORY = "/System/Library/Sounds";
-const LINUX_FREEDESKTOP_SOUND =
-  "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga";
+const LINUX_FREEDESKTOP_SOUND_DIRECTORY = "/usr/share/sounds/freedesktop/stereo";
 const PERMISSION_DEDUPE_WINDOW_MS = 30_000;
 const ENABLED_VALUES = new Set(["1", "true", "yes", "on"]);
 
@@ -203,6 +204,30 @@ function configuredSound(env = process.env) {
   return value || DEFAULT_SOUND_NAME;
 }
 
+function defaultEventSound(kind, platform = process.platform) {
+  if (platform === "linux") return kind === "permission" ? "dialog-warning" : "complete";
+  if (platform === "win32") return kind === "permission" ? "Exclamation" : "Asterisk";
+  return kind === "permission" ? DEFAULT_PERMISSION_SOUND_NAME : DEFAULT_COMPLETION_SOUND_NAME;
+}
+
+function configuredEventSound(kind, env = process.env, platform = process.platform) {
+  const eventKey = kind === "permission"
+    ? "CLI_REMINDER_PERMISSION_SOUND"
+    : "CLI_REMINDER_COMPLETION_SOUND";
+  let raw;
+  if (Object.prototype.hasOwnProperty.call(env, eventKey)) raw = env[eventKey];
+  else if (Object.prototype.hasOwnProperty.call(env, "CLI_REMINDER_SOUND")) {
+    raw = env.CLI_REMINDER_SOUND;
+  } else if (Object.prototype.hasOwnProperty.call(env, "CODEX_NOTIFIER_SOUND")) {
+    raw = env.CODEX_NOTIFIER_SOUND;
+  }
+
+  const fallback = defaultEventSound(kind, platform);
+  const value = String(raw ?? fallback).trim();
+  if (DISABLED_SOUND_VALUES.has(value.toLowerCase())) return null;
+  return value || fallback;
+}
+
 function topLevelTomlString(source, key) {
   for (const line of String(source || "").split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -276,50 +301,39 @@ function findExecutable(name, platform = process.platform, env = process.env) {
   return null;
 }
 
-function notifyMacos(title, body, sound, runtime = {}) {
+function playMacosSound(sound, runtime = {}) {
+  if (!sound || path.basename(sound) !== sound) return false;
   const run = runtime.runQuietly || runQuietly;
   const exists = runtime.existsSync || fs.existsSync;
-  const script =
-    "function run(argv) { " +
-    "const app = Application.currentApplication(); " +
-    "app.includeStandardAdditions = true; " +
-    "app.displayNotification(argv[1], { withTitle: argv[0] }); " +
-    "}";
-  const notified = run("osascript", ["-l", "JavaScript", "-e", script, title, body]);
-
-  if (sound && path.basename(sound) === sound) {
-    const soundPath = path.join(MACOS_SOUND_DIRECTORY, `${sound}.aiff`);
-    if (exists(soundPath)) run("afplay", [soundPath]);
-  }
-  return notified;
+  const soundPath = path.join(MACOS_SOUND_DIRECTORY, `${sound}.aiff`);
+  if (!exists(soundPath)) return false;
+  return run("afplay", [soundPath]);
 }
 
-function notifyLinux(title, body, sound, product, runtime = {}) {
+function linuxSoundCommand(sound, runtime = {}) {
+  if (!sound || path.basename(sound) !== sound) return null;
   const find = runtime.findExecutable || findExecutable;
-  const run = runtime.runQuietly || runQuietly;
   const exists = runtime.existsSync || fs.existsSync;
-  const executable = find("notify-send", "linux", runtime.env || process.env);
-  if (!executable) return false;
-
-  let soundCommand = null;
-  if (sound) {
-    const canberra = find("canberra-gtk-play", "linux", runtime.env || process.env);
-    const paplay = find("paplay", "linux", runtime.env || process.env);
-    if (canberra) soundCommand = [canberra, ["-i", "message-new-instant"]];
-    else if (paplay && exists(LINUX_FREEDESKTOP_SOUND)) {
-      soundCommand = [paplay, [LINUX_FREEDESKTOP_SOUND]];
-    }
+  const env = runtime.env || process.env;
+  const canberra = find("canberra-gtk-play", "linux", env);
+  const paplay = find("paplay", "linux", env);
+  if (canberra) return [canberra, ["-i", sound]];
+  const soundPath = path.join(LINUX_FREEDESKTOP_SOUND_DIRECTORY, `${sound}.oga`);
+  if (paplay && exists(soundPath)) {
+    return [paplay, [soundPath]];
   }
-
-  const args = [`--app-name=${product}`];
-  if (sound && !soundCommand) args.push("--hint=string:sound-name:message-new-instant");
-  args.push(title, body);
-  const notified = run(executable, args);
-  if (soundCommand) run(soundCommand[0], soundCommand[1]);
-  return notified;
+  return null;
 }
 
-function notifyWindows(title, body, sound, runtime = {}) {
+function playLinuxSound(sound, runtime = {}) {
+  const command = linuxSoundCommand(sound, runtime);
+  if (!command) return false;
+  const run = runtime.runQuietly || runQuietly;
+  return run(command[0], command[1]);
+}
+
+function playWindowsSound(sound, runtime = {}) {
+  if (!sound) return false;
   const find = runtime.findExecutable || findExecutable;
   const run = runtime.runQuietly || runQuietly;
   const env = { ...(runtime.env || process.env) };
@@ -328,35 +342,41 @@ function notifyWindows(title, body, sound, runtime = {}) {
     find("powershell", "win32", env) ||
     find("powershell.exe", "win32", env);
   if (!executable) return false;
-
-  env.CLI_REMINDER_NOTIFY_TITLE = title;
-  env.CLI_REMINDER_NOTIFY_BODY = body;
-  const soundCommand = sound ? "[System.Media.SystemSounds]::Exclamation.Play();" : "";
+  const knownSounds = new Map([
+    ["asterisk", "Asterisk"],
+    ["beep", "Beep"],
+    ["exclamation", "Exclamation"],
+    ["glass", "Asterisk"],
+    ["hand", "Hand"],
+    ["ping", "Exclamation"],
+    ["question", "Question"],
+  ]);
+  const systemSound = knownSounds.get(String(sound).toLowerCase()) || "Beep";
   const script =
-    "$ErrorActionPreference='Stop';" +
     "Add-Type -AssemblyName System.Windows.Forms;" +
-    "$icon=New-Object System.Windows.Forms.NotifyIcon;" +
-    "$icon.Icon=[System.Drawing.SystemIcons]::Information;" +
-    "$icon.BalloonTipTitle=$env:CLI_REMINDER_NOTIFY_TITLE;" +
-    "$icon.BalloonTipText=$env:CLI_REMINDER_NOTIFY_BODY;" +
-    "$icon.Visible=$true;" +
-    soundCommand +
-    "$icon.ShowBalloonTip(5000);" +
-    "Start-Sleep -Milliseconds 5500;" +
-    "$icon.Dispose()";
+    `[System.Media.SystemSounds]::${systemSound}.Play();` +
+    "Start-Sleep -Milliseconds 500";
   return run(executable, ["-NoProfile", "-NonInteractive", "-Command", script], {
     env,
-    timeout: 7_000,
+    timeout: 2_000,
   });
 }
 
-function sendNotification(title, body, product, options = {}) {
+function sendSound(options = {}) {
   const platform = options.platform || process.platform;
-  const sound = configuredSound(options.env || process.env);
-  if (platform === "darwin") return notifyMacos(title, body, sound, options.runtime);
-  if (platform === "linux") return notifyLinux(title, body, sound, product, options.runtime);
-  if (platform === "win32") return notifyWindows(title, body, sound, options.runtime);
+  const sound = configuredEventSound(
+    options.kind || "complete",
+    options.env || process.env,
+    platform,
+  );
+  if (platform === "darwin") return playMacosSound(sound, options.runtime);
+  if (platform === "linux") return playLinuxSound(sound, options.runtime);
+  if (platform === "win32") return playWindowsSound(sound, options.runtime);
   return false;
+}
+
+function dispatchNotification(notification, _payload, env = process.env, options = {}) {
+  return sendSound({ ...options, env, kind: notification.kind });
 }
 
 function parseArgs(argv) {
@@ -374,15 +394,10 @@ function parseArgs(argv) {
 function main(argv = process.argv.slice(2), input, env = process.env) {
   const args = parseArgs(argv);
   const effectiveEnv = args.product ? { ...env, CLI_REMINDER_PRODUCT: args.product } : env;
-  const product = productName({}, effectiveEnv);
 
   if (args.selfTest) {
-    sendNotification(
-      `${product}：通知测试`,
-      "如果你看到并听到这条消息，通知工具已可用。",
-      product,
-      { env: effectiveEnv },
-    );
+    sendSound({ env: effectiveEnv, kind: "permission" });
+    sendSound({ env: effectiveEnv, kind: "complete" });
     return 0;
   }
 
@@ -396,20 +411,22 @@ function main(argv = process.argv.slice(2), input, env = process.env) {
 
   const notification = notificationFor(payload, effectiveEnv);
   if (shouldDispatch(notification, payload, effectiveEnv) && notification) {
-    sendNotification(notification.title, notification.body, productName(payload, effectiveEnv), {
-      env: effectiveEnv,
-    });
+    dispatchNotification(notification, payload, effectiveEnv);
   }
   return 0;
 }
 
 module.exports = {
+  DEFAULT_COMPLETION_SOUND_NAME,
+  DEFAULT_PERMISSION_SOUND_NAME,
   DEFAULT_SOUND_NAME,
   compactText,
   codexApprovalsReviewer,
   codexAutoApprovalEnabled,
+  configuredEventSound,
   configuredSound,
   dedupeFile,
+  dispatchNotification,
   findExecutable,
   hadRecentImmediatePermission,
   hookEventName,
@@ -417,13 +434,13 @@ module.exports = {
   markImmediatePermission,
   notificationFor,
   notificationType,
-  notifyLinux,
-  notifyMacos,
   notifyAutoApprovals,
-  notifyWindows,
+  playLinuxSound,
+  playMacosSound,
+  playWindowsSound,
   productName,
   projectName,
-  sendNotification,
+  sendSound,
   shouldDispatch,
   topLevelTomlString,
 };

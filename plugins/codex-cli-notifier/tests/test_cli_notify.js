@@ -86,6 +86,26 @@ test("sound uses generic setting and keeps legacy Codex setting", () => {
   assert.equal(notifier.configuredSound({}), "Glass");
   assert.equal(notifier.configuredSound({ CODEX_NOTIFIER_SOUND: "Ping" }), "Ping");
   assert.equal(notifier.configuredSound({ CLI_REMINDER_SOUND: "none" }), null);
+  assert.equal(notifier.configuredEventSound("permission", {}, "darwin"), "Glass");
+  assert.equal(notifier.configuredEventSound("complete", {}, "darwin"), "Glass");
+  assert.equal(notifier.configuredEventSound("permission", {}, "linux"), "dialog-warning");
+  assert.equal(notifier.configuredEventSound("complete", {}, "win32"), "Asterisk");
+  assert.equal(
+    notifier.configuredEventSound(
+      "permission",
+      { CLI_REMINDER_PERMISSION_SOUND: "Pop", CLI_REMINDER_SOUND: "Glass" },
+      "darwin",
+    ),
+    "Pop",
+  );
+  assert.equal(
+    notifier.configuredEventSound(
+      "complete",
+      { CLI_REMINDER_COMPLETION_SOUND: "none" },
+      "darwin",
+    ),
+    null,
+  );
 });
 
 test("Codex approve for me suppresses permission notifications", () => {
@@ -147,57 +167,98 @@ test("auto approval notification can be explicitly restored", () => {
   assert.equal(notifier.shouldDispatch(notification, payload, env), true);
 });
 
-test("macOS notification and requested sound are dispatched", () => {
+test("completion dispatches sound without a desktop notification", () => {
   const calls = [];
-  const result = notifier.notifyMacos("title", "body", "Ping", {
-    existsSync: () => true,
-    runQuietly: (command, args) => {
-      calls.push([command, args]);
-      return true;
+  const notification = notifier.notificationFor(
+    {
+      hook_event_name: "Stop",
+      cwd: "/workspace/demo",
+      last_assistant_message: "done",
     },
-  });
+    { PLUGIN_ROOT: pluginRoot },
+  );
+  const result = notifier.dispatchNotification(
+    notification,
+    {},
+    { PLUGIN_ROOT: pluginRoot },
+    {
+      platform: "darwin",
+      runtime: {
+        existsSync: () => true,
+        runQuietly: (command, args) => {
+          calls.push([command, args]);
+          return true;
+        },
+      },
+    },
+  );
   assert.equal(result, true);
-  assert.equal(calls.length, 2);
-  assert.equal(calls[0][0], "osascript");
-  assert.deepEqual(calls[1], ["afplay", ["/System/Library/Sounds/Ping.aiff"]]);
+  assert.deepEqual(calls, [["afplay", ["/System/Library/Sounds/Glass.aiff"]]]);
 });
 
-test("Linux uses canberra sound player when available", () => {
+test("permission dispatches the configured sound without a desktop notification", () => {
   const calls = [];
-  const executables = new Map([
-    ["notify-send", "/usr/bin/notify-send"],
-    ["canberra-gtk-play", "/usr/bin/canberra-gtk-play"],
-  ]);
-  const result = notifier.notifyLinux("title", "body", "Glass", "Grok Build", {
-    findExecutable: (name) => executables.get(name) || null,
+  const notification = notifier.notificationFor(
+    { hook_event_name: "PermissionRequest", tool_name: "Bash" },
+    { PLUGIN_ROOT: pluginRoot },
+  );
+  notifier.dispatchNotification(
+    notification,
+    {},
+    { PLUGIN_ROOT: pluginRoot },
+    {
+      platform: "darwin",
+      runtime: {
+        existsSync: () => true,
+        runQuietly: (command, args) => {
+          calls.push([command, args]);
+          return true;
+        },
+      },
+    },
+  );
+  assert.deepEqual(calls, [["afplay", ["/System/Library/Sounds/Glass.aiff"]]]);
+});
+
+test("Linux uses distinct canberra sounds for permission and completion", () => {
+  const calls = [];
+  const runtime = {
+    findExecutable: (name) =>
+      name === "canberra-gtk-play" ? "/usr/bin/canberra-gtk-play" : null,
     runQuietly: (command, args) => {
       calls.push([command, args]);
       return true;
     },
-  });
-  assert.equal(result, true);
+  };
+  assert.equal(notifier.sendSound({ kind: "permission", platform: "linux", runtime }), true);
+  assert.equal(notifier.sendSound({ kind: "complete", platform: "linux", runtime }), true);
+  assert.deepEqual(calls[0], [
+    "/usr/bin/canberra-gtk-play",
+    ["-i", "dialog-warning"],
+  ]);
   assert.deepEqual(calls[1], [
     "/usr/bin/canberra-gtk-play",
-    ["-i", "message-new-instant"],
+    ["-i", "complete"],
   ]);
 });
 
-test("Windows uses PowerShell NotifyIcon and passes text through environment", () => {
-  let invocation = null;
-  const result = notifier.notifyWindows("title", "body", "Glass", {
+test("Windows uses distinct system sounds without creating a NotifyIcon", () => {
+  const invocations = [];
+  const runtime = {
     env: { PATH: "C:\\Windows\\System32", PATHEXT: ".EXE" },
     findExecutable: (name) =>
       name === "powershell" ? "C:\\Windows\\System32\\WindowsPowerShell\\powershell.exe" : null,
     runQuietly: (command, args, options) => {
-      invocation = { command, args, options };
+      invocations.push({ command, args, options });
       return true;
     },
-  });
-  assert.equal(result, true);
-  assert.match(invocation.command, /powershell\.exe$/i);
-  assert.equal(invocation.options.env.CLI_REMINDER_NOTIFY_TITLE, "title");
-  assert.equal(invocation.options.env.CLI_REMINDER_NOTIFY_BODY, "body");
-  assert.match(invocation.args.at(-1), /SystemSounds.*Exclamation/);
+  };
+  assert.equal(notifier.sendSound({ kind: "permission", platform: "win32", runtime }), true);
+  assert.equal(notifier.sendSound({ kind: "complete", platform: "win32", runtime }), true);
+  assert.match(invocations[0].args.at(-1), /SystemSounds.*Exclamation/);
+  assert.match(invocations[1].args.at(-1), /SystemSounds.*Asterisk/);
+  assert.doesNotMatch(invocations[0].args.at(-1), /NotifyIcon/);
+  assert.doesNotMatch(invocations[1].args.at(-1), /NotifyIcon/);
 });
 
 test("delayed Claude permission notification is deduplicated", () => {

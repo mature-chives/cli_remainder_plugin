@@ -1,19 +1,19 @@
 {
   "name": "codex-cli-notifier",
-  "version": "0.3.3+codex.20260823170453",
-  "description": "Cross-platform desktop notifications when Codex, Claude Code, or Grok Build needs approval or finishes a turn.",
+  "version": "0.3.3+codex.20260831042153",
+  "description": "Configurable cross-platform sounds for approvals and completed turns.",
   "author": {
     "name": "mature-chives"
   },
   "interface": {
     "displayName": "CLI Reminder",
-    "shortDescription": "Desktop alerts for coding-agent approvals and completed turns.",
-    "longDescription": "CLI Reminder sends native notifications with sound on macOS, Windows, and Linux when Codex, Claude Code, or Grok Build needs permission or completes a turn.",
+    "shortDescription": "Configurable approval and completion sounds for coding agents.",
+    "longDescription": "CLI Reminder plays configurable sounds when Codex, Claude Code, or Grok Build needs permission or completes work, without showing desktop notification banners.",
     "developerName": "mature-chives",
     "category": "Productivity",
     "capabilities": [
       "Lifecycle hooks",
-      "Cross-platform desktop notifications",
+      "Configurable event sounds",
       "Sound alerts"
     ],
     "defaultPrompt": "Explain how CLI Reminder is configured."

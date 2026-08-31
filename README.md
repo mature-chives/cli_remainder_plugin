@@ -1,12 +1,12 @@
 # CLI Reminder Plugin Marketplace
 
-为 Codex CLI、Claude Code 和 Grok Build 提供带声音的系统桌面通知，支持 macOS、Windows 和 Linux。
+为 Codex CLI、Claude Code 和 Grok Build 提供可分别配置的声音提醒，支持 macOS、Windows 和 Linux。
 
 通知场景：
 
-- 等待权限确认。
-- 当前 turn 或后台 agent 完成。
-- Hook 异步执行；通知失败不会批准、拒绝或阻塞 CLI。
+- 等待权限确认时播放权限声音，不显示桌面通知。
+- 当前 turn 或后台 agent 完成时播放完成声音；macOS 默认同为 `Glass`。
+- Hook 异步执行；声音播放失败不会批准、拒绝或阻塞 CLI。
 - Codex 使用 **Approve for me** 自动审批时，不提醒每条权限请求。
 
 插件源码位于 [`plugins/codex-cli-notifier`](./plugins/codex-cli-notifier)。为兼容已有 Codex 安装，Codex 插件 ID 继续使用 `codex-cli-notifier`；Claude Code 和 Grok Build 中显示为 `cli-reminder`。
@@ -14,9 +14,9 @@
 ## 环境要求
 
 - Node.js 18 或更高版本。
-- macOS：系统自带通知与声音组件。
+- macOS：系统自带声音组件。
 - Windows：PowerShell 5.1 或 PowerShell 7。
-- Linux：需要 `notify-send`；声音可选安装 `canberra-gtk-play` 或 `paplay`。
+- Linux：需要 `canberra-gtk-play` 或 `paplay`。
 
 ## 从 GitHub 安装
 

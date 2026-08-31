@@ -1,5 +1,5 @@
 {
-  "description": "Notify the desktop when Codex needs attention.",
+  "description": "Play configurable sounds when Codex needs approval or completes work.",
   "hooks": {
     "PermissionRequest": [
       {
